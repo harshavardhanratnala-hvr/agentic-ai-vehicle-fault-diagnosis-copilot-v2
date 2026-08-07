@@ -1,0 +1,32 @@
+{
+  "Majority class": {
+    "recall_fault": 0.0,
+    "precision_fault": 0.0,
+    "F1_fault": 0.0,
+    "macro_F1_secondary": 0.45782759474857565
+  },
+  "Naive persistence (6h lookback)": {
+    "recall_fault": 0.16666666666666666,
+    "precision_fault": 0.16666666666666666,
+    "F1_fault": 0.16666666666666666,
+    "macro_F1_secondary": 0.5065715316290185
+  },
+  "Logistic Regression (balanced, scaled, 45 features)": {
+    "recall_fault": 0.7613803230543319,
+    "precision_fault": 0.29104687061465057,
+    "F1_fault": 0.4211167512690355,
+    "macro_F1_secondary": 0.5972886100405567
+  },
+  "Random Forest (tuned, 45 features)": {
+    "recall_fault": 0.8362701908957415,
+    "precision_fault": 0.2874085288922533,
+    "F1_fault": 0.42779342723004693,
+    "macro_F1_secondary": 0.5888659380713221
+  },
+  "XGBoost (tuned, 45 features)": {
+    "recall_fault": 0.8237885462555066,
+    "precision_fault": 0.3026706231454006,
+    "F1_fault": 0.4426908660485303,
+    "macro_F1_secondary": 0.6078095436263068
+  }
+}

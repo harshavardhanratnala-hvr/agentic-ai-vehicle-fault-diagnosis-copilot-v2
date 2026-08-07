@@ -1,0 +1,21 @@
+# Data files - do not commit raw or processed data
+data/raw/*.csv
+data/processed/*.csv
+data/processed/*.npz
+!data/**/.gitkeep
+
+# Models (large binary files)
+models/*.joblib
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
