@@ -1,4 +1,4 @@
-# Business goal, metric, and process — all-vehicle track (notebooks 08–11)
+# Business goal, metric, and process — all-vehicle track (notebooks 08–12)
 
 ## Business goal
 
@@ -25,7 +25,11 @@ Logistic regression, balanced class weights, all 10 raw sensor columns (SOC, SOH
 
 \*Recomputed for consistency; original run reported F1 rather than F2 at this step.
 
-## Process — building on the baseline (notebooks 09–11)
+## EDA (notebook 08)
+
+Fault rate genuinely differs by usage profile even in the raw, unmodeled data: 0.986% (`rare_user`) to 2.573% (`heavy_user`) — a 2.6x spread. Confirmed with 0 missing values across all 175,176 rows and no gaps in any of the 4 vehicles' timelines. This is the evidence base for the "all 4 vehicles merged" tradeoff noted below, not a discovery made after modeling.
+
+## Process — building on the baseline (notebooks 09–12)
 
 **Feature engineering:** rolling/lag features (6h/12h/24h windows, 1h/3h/6h lags) computed per vehicle to avoid cross-vehicle bleed, plus calendar features (hour-of-day, day-of-week, month-of-year, hours-since-start), justified by a real seasonality check (hour-of-day showed a 3.7 percentage-point issue-rate spread, month-of-year only 0.4pp — used as evidence, not assumed).
 

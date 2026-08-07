@@ -1,5 +1,12 @@
 # Rebuild plan — Vehicle Fault Forecasting (single vehicle, time series)
 
+> **STATUS: superseded / legacy.** This plan covers the **single-vehicle track only**
+> (notebooks 01–07). The project's active line of development is the **all-vehicle track**
+> (notebooks 08–12) — see `Business_Goal_and_Process.md` for the current business goal, metric,
+> and results. This document is kept for reference (it explains the reasoning behind the
+> single-vehicle track, which still exists as a separate, more leakage-conservative body of work),
+> not as the current plan.
+
 Status: draft for review before any code is written. Nothing here has been built yet.
 
 ---
