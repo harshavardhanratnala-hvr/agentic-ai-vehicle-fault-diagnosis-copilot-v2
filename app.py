@@ -4,6 +4,7 @@ Calls src/classifier.py directly; this file is UI only, no model logic lives her
 Run with: streamlit run app.py
 """
 
+import math
 import sys
 from pathlib import Path
 
@@ -21,16 +22,83 @@ SCENARIOS = {
     "Normal driving": {
         "file": "normal.csv",
         "blurb": "A calm 48h window, no fault episode nearby.",
+        "gauge_fraction": 0.15,
+        "gauge_color": "#22c55e",
     },
     "Gradual degradation": {
         "file": "escalating.csv",
         "blurb": "48h window ending ~12h before an actual fault episode in the data -- risk climbing, not yet flagged.",
+        "gauge_fraction": 0.55,
+        "gauge_color": "#f59e0b",
     },
     "Pre-fault escalation": {
         "file": "prefault.csv",
         "blurb": "48h window ending right at a real fault episode in the data.",
+        "gauge_fraction": 0.92,
+        "gauge_color": "#ef4444",
     },
 }
+
+# Usage intensity, low to high -- drives the gauge fill on each profile's icon.
+VEHICLE_PROFILES = {
+    "Rare user": {"gauge_fraction": 0.15, "gauge_color": "#22c55e"},
+    "Moderate user": {"gauge_fraction": 0.45, "gauge_color": "#eab308"},
+    "Daily user": {"gauge_fraction": 0.7, "gauge_color": "#f97316"},
+    "Heavy user": {"gauge_fraction": 0.92, "gauge_color": "#ef4444"},
+}
+
+
+def _car_gauge_icon_svg(fraction: float, color: str) -> str:
+    """A small car-with-gauge icon; the gauge arc fills to `fraction` in `color`.
+
+    Streamlit's st.radio has no per-option image slot, so this icon is paired with a
+    plain button acting as the visible "radio button" instead (see render_image_choice).
+    """
+    cx, cy, r = 50, 40, 30
+    angle = math.radians(180 - fraction * 180)
+    nx, ny = cx + (r - 6) * math.cos(angle), cy - (r - 6) * math.sin(angle)
+    arc_len = math.pi * r
+    return (
+        '<svg viewBox="0 0 100 100" width="72" height="72" xmlns="http://www.w3.org/2000/svg">'
+        f'<path d="M {cx - r} {cy} A {r} {r} 0 0 1 {cx + r} {cy}" fill="none" stroke="#9aa0a6" '
+        'stroke-width="7" stroke-linecap="round" opacity="0.3"/>'
+        f'<path d="M {cx - r} {cy} A {r} {r} 0 0 1 {cx + r} {cy}" fill="none" stroke="{color}" '
+        f'stroke-width="7" stroke-linecap="round" stroke-dasharray="{fraction * arc_len:.1f} 999"/>'
+        f'<circle cx="{cx}" cy="{cy}" r="3.5" fill="{color}"/>'
+        f'<line x1="{cx}" y1="{cy}" x2="{nx:.1f}" y2="{ny:.1f}" stroke="{color}" stroke-width="4" stroke-linecap="round"/>'
+        '<g transform="translate(16,50)">'
+        '<path d="M6 12 L16 -1 L52 -1 L62 12 Z" fill="#9aa0a6"/>'
+        '<rect x="0" y="12" width="68" height="14" rx="7" fill="#9aa0a6"/>'
+        '<circle cx="14" cy="28" r="6.5" fill="#3d3d3d"/>'
+        '<circle cx="54" cy="28" r="6.5" fill="#3d3d3d"/>'
+        '</g>'
+        '</svg>'
+    )
+
+
+def render_image_choice(options, visuals, key, default):
+    """A row of mutually-exclusive buttons, each with an icon above it -- behaves like a
+    radio group, styled to show the selected option (type="primary") vs the rest."""
+    if key not in st.session_state:
+        st.session_state[key] = default
+    cols = st.columns(len(options))
+    for col, option in zip(cols, options):
+        v = visuals[option]
+        with col:
+            st.markdown(
+                f'<div style="text-align:center">{_car_gauge_icon_svg(v["gauge_fraction"], v["gauge_color"])}</div>',
+                unsafe_allow_html=True,
+            )
+            selected = st.session_state[key] == option
+            if st.button(
+                option,
+                key=f"{key}__{option}",
+                width="stretch",
+                type="primary" if selected else "secondary",
+            ):
+                st.session_state[key] = option
+                st.rerun()
+    return st.session_state[key]
 
 st.set_page_config(page_title="Fleet maintenance monitoring", layout="wide")
 st.title("Fleet maintenance monitoring")
@@ -39,14 +107,23 @@ st.caption(
     "Team NodePair."
 )
 
-col_a, col_b, col_c = st.columns([2, 2, 1])
-with col_a:
-    vehicle = st.selectbox("Vehicle / usage profile", ["Heavy user", "Daily user", "Moderate user", "Rare user"])
-with col_b:
-    scenario_name = st.selectbox("Scenario (pre-loaded 48h window)", list(SCENARIOS.keys()), index=2)
-with col_c:
-    st.write("")
-    run = st.button("Run prediction", type="primary")
+st.subheader("Vehicle / usage profile")
+vehicle = render_image_choice(
+    options=list(VEHICLE_PROFILES.keys()),
+    visuals=VEHICLE_PROFILES,
+    key="vehicle_profile",
+    default="Heavy user",
+)
+
+st.subheader("Scenario (pre-loaded 48h window)")
+scenario_name = render_image_choice(
+    options=list(SCENARIOS.keys()),
+    visuals=SCENARIOS,
+    key="scenario_name",
+    default="Pre-fault escalation",
+)
+
+run = st.button("Run prediction", type="primary")
 
 st.caption(SCENARIOS[scenario_name]["blurb"])
 if vehicle != "Heavy user":
