@@ -1,8 +1,13 @@
 # Data files - do not commit raw or processed data
 data/raw/*.csv
+data/raw/nhtsa/*.csv
 data/processed/*.csv
 data/processed/*.npz
 !data/**/.gitkeep
+
+# Exception: small, curated demo fixtures the dashboard needs to run out of the box
+# (48h each, ~10KB total -- not the bulk processed/raw data the rule above excludes)
+!data/processed/scenarios/*.csv
 
 # Models (large binary files)
 models/*.joblib
@@ -19,3 +24,6 @@ venv/
 
 # OS
 .DS_Store
+
+# Office lock files
+slides/~$*

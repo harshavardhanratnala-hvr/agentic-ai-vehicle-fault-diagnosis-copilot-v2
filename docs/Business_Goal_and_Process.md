@@ -33,19 +33,97 @@ Fault rate genuinely differs by usage profile even in the raw, unmodeled data: 0
 
 **Feature engineering:** rolling/lag features (6h/12h/24h windows, 1h/3h/6h lags) computed per vehicle to avoid cross-vehicle bleed, plus calendar features (hour-of-day, day-of-week, month-of-year, hours-since-start), justified by a real seasonality check (hour-of-day showed a 3.7 percentage-point issue-rate spread, month-of-year only 0.4pp — used as evidence, not assumed).
 
-**Feature selection:** mutual information ranked against a random-noise benchmark, cross-checked with permutation importance from a reference Random Forest — a feature is kept if either signal supports it. Narrowed 54 candidate features down to 45.
+**Feature selection:** mutual information ranked against a random-noise benchmark, cross-checked with permutation importance from a reference Random Forest — a feature is kept if either signal supports it, computed on the full training/test data (updated 2026-08-11 — see note below). Narrowed 54 candidate features down to 53.
 
-**Tree models:** Random Forest and XGBoost, hyperparameters tuned via `RandomizedSearchCV` scored directly on F2 (not macro F1), stratified cross-validation matching the split strategy.
+**Tree models:** Random Forest and XGBoost, hyperparameters tuned via `RandomizedSearchCV` scored directly on F2 (not macro F1), stratified cross-validation matching the split strategy, search run on the full 140,067-row training set (updated 2026-08-11 — see note below).
 
 ## Final scoreboard (F2 is the headline number)
 
 | Model | Recall (fault) | Precision (fault) | F2 (fault) |
 |---|---|---|---|
 | Logistic Regression (baseline) | 0.516556 | 0.132987 | 0.327587 |
-| Random Forest (tuned, 45 selected features) | 0.742668 | 0.181196 | 0.458510 |
-| XGBoost (tuned, 45 selected features) | 0.855251 | 0.181344 | 0.490611 |
+| Random Forest (tuned, 53 selected features) | 0.749606 | 0.195799 | 0.478771 |
+| XGBoost (tuned, 53 selected features) | 0.853989 | 0.268013 | 0.594172 |
 
-Going from the baseline to the tuned models roughly doubled F2 and raised recall from 52% to 86% — a clear, evidence-backed improvement story built entirely on the foundation specified for this track.
+Going from the baseline to the tuned models raised F2 from 0.328 to 0.594 (a 1.81x improvement) and recall from 52% to 85% — a clear, evidence-backed improvement story built entirely on the foundation specified for this track.
+
+**No subsampling anywhere in the pipeline (updated 2026-08-11).** Two steps previously ran on a
+subsample of the training data for compute-time reasons, each refit/rescored on the full data
+afterward: mutual information + permutation importance (feature selection, notebook 11) used
+20K/30K/10K-row subsamples, and the RF/XGBoost hyperparameter search (notebook 12) used a
+40,000-row subsample. The coach flagged subsampling as a corner worth closing, so both steps now
+run on the complete training set (140,067 rows) / test set (35,017 rows) — no subsample anywhere
+from feature selection through final model training.
+
+Removing the feature-selection subsample changed the result meaningfully: MI-vs-noise now keeps
+53 of 54 candidate features (up from 45), because on the full 140K rows only one feature
+(`Motor_Temp_roll_mean_6h`) fails both the MI-vs-noise and permutation-importance checks — the
+20K-row subsample had understated several features' real signal. Feeding that wider, full-data
+feature set into the also-now-full-data hyperparameter search pushed XGBoost's F2 to 0.594 (up
+from 0.491 in the original subsampled version), with recall back at 85.4% and precision nearly
+double the original (26.8% vs. 18.1%). This is a better model by the metric that matters, not
+just a more defensible process — and the two fixes only look this good together because the
+feature list feeding the search changed too; re-running only one of the two subsampled steps
+would have understated the improvement.
+
+The `.joblib` files in `models/`, `data/processed/selected_feature_cols_all_vehicles.json`, and
+`models/baseline_results_all_vehicles.json` are all regenerated from this full-data run; the deck
+and slide numbers still need to be updated to match.
+
+**Plots added, notebook 11 (feature selection):** an MI-ranking bar chart (all 54 candidates vs.
+the random-noise floor) and a permutation-importance bar chart (MI survivors only). **Plot added,
+notebook 12 (tree models):** final feature-importance bar charts from the trained Random Forest
+and XGBoost, so which of the 53 features the deployed models actually lean on is visible, not just
+asserted.
+
+**On the calendar features specifically** (this came up because it looked risky at a glance):
+`month_of_year` is the single weakest candidate feature by both MI and permutation importance — it
+clears the random-noise floor only barely (MI score ≈ 0.003, versus 0.09+ for the top features)
+and its permutation importance is ≈ 0. It survives the OR-based selection rule on that thin MI
+margin, not because it's a strong signal. It's also *not* the one feature the full-data rerun
+actually dropped — that was `Motor_Temp_roll_mean_6h`, a rolling-window feature, not a calendar
+one. Worth knowing for questions: `month_of_year` does still show up in XGBoost's top 25 by final
+importance (rank ~14), so the model finds some use for it even though the feature-selection checks
+were unconvinced — a reasonable thing to say out loud rather than paper over if asked.
+
+## Inference function (Phase 2 — closes out the model)
+
+`src/classifier.py` wraps `models/xgboost_all_vehicles.joblib` in a single callable:
+`classify_fault(readings_df) -> {probability, risk_level, prediction, timestamp,
+n_features_used}`. It takes raw hourly sensor readings for one vehicle (`timestamp` +
+the 10 `RAW_SENSOR_COLS`), reproduces notebook 10's rolling/lag/calendar feature
+engineering internally, and predicts on the most recent row with a complete 24-hour
+feature window (shorter history raises a clear `ValueError` rather than guessing).
+`classify_fault_batch(readings_df)` returns the same thing for every row that qualifies,
+for a dashboard that wants risk over time rather than a single reading.
+
+Risk buckets: "Normal" below 50% probability, "Flagged" at/above it. The 0.5 cutoff isn't a
+guess — it's the threshold that maximizes F2 on the held-out test set for this exact model
+(checked directly against the data), and it's already the threshold behind every recall/
+precision/F2 number quoted elsewhere in this doc and the deck. An earlier draft borrowed 0.33
+from a teammate's slide sketch; checked against the data, that threshold flags 44% of all
+readings (too noisy to act on) and actually scores a lower F2 (0.541 vs. 0.594 at 0.5).
+Smoke-tested against real `heavy_user` data (see the `if __name__ == "__main__"` block);
+update both places if the threshold ever changes.
+
+This is what the dashboard (phase 3) will actually call instead of re-running notebook
+cells by hand.
+
+## RAG corpus (Phase 1 of the RAG/agent track)
+
+`data/raw/nhtsa/recalls_battery_electrical.csv` (203 recalls) and
+`data/raw/nhtsa/complaints_battery_electrical.csv` (3,329 complaints) — pulled from the
+[NHTSA Datasets & APIs](https://www.nhtsa.gov/nhtsa-datasets-and-apis), filtered to
+battery/electrical component tags, not all recalls for an EV model (that over-broad filter
+was an identified risk — see the sibling repo's `Capstone_Project_Plan.md`). Originally
+collected in `agentic-ai-vehicle-fault-diagnosis-and-repair-copilot`; copied here on
+2026-08-11 so the RAG corpus lives next to the working classifier and dashboard code,
+per the team's scope decision to finish the model and a real dashboard first, then do a
+thin, verified retrieval slice before attempting the full agent tool-calling loop.
+
+Status: collected and filtered only. Chunking, embedding, and the retrieval-quality gate
+(run known fault codes through the index, confirm it surfaces the right record before
+anything is allowed to cite it) are not started.
 
 ## Known tradeoffs, by design (not oversights)
 
@@ -53,4 +131,4 @@ Going from the baseline to the tuned models roughly doubled F2 and raised recall
 
 **All 4 vehicles merged.** Reopens the original fairness question (different usage profiles pooled into one model) that motivated the single-vehicle pivot earlier in the project. Used here per direct instruction to build the "clean, simple" baseline on all available data. The per-profile fairness breakdown has not yet been re-run on this all-vehicle track — only on the single-vehicle one.
 
-**Hyperparameter search on a subsample.** The search itself ran on a 40,000-row stratified subsample of the 140,067-row training set (compute-time constraint), with the winning configuration then refit on the full training set. The final models are trained on all available data; only the search step was subsampled.
+**Hyperparameter search — no longer subsampled.** An earlier version of this pipeline ran the search on a 40,000-row stratified subsample of the training set for compute-time reasons, refitting the winning configuration on the full set. As of 2026-08-11 the search itself also runs on the complete 140,067-row training set — removed per coach feedback that flagged subsampling as a corner worth closing.

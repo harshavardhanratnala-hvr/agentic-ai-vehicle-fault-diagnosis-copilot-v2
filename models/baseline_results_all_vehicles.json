@@ -1,20 +1,20 @@
 {
-  "Logistic Regression (baseline, notebook 08)": {
+  "Logistic Regression (baseline, notebook 09)": {
     "recall_fault": 0.5165562913907285,
     "precision_fault": 0.1329869286352196,
     "F2_fault": 0.327586896524139,
     "F1_fault_secondary": 0.2115185950413223
   },
   "Random Forest (tuned, selected features)": {
-    "recall_fault": 0.7426679280983917,
-    "precision_fault": 0.181195660537047,
-    "F2_fault": 0.4585101826252872,
-    "F1_fault_secondary": 0.291316180108857
+    "recall_fault": 0.749605802585935,
+    "precision_fault": 0.1957990115321252,
+    "F2_fault": 0.47877054463422497,
+    "F1_fault_secondary": 0.31049572202991316
   },
   "XGBoost (tuned, selected features)": {
-    "recall_fault": 0.8552507095553453,
-    "precision_fault": 0.18134403209628885,
-    "F2_fault": 0.4906110930207316,
-    "F1_fault_secondary": 0.299238662694472
+    "recall_fault": 0.8539892778303374,
+    "precision_fault": 0.2680126682501979,
+    "F2_fault": 0.5941723714235563,
+    "F1_fault_secondary": 0.407984934086629
   }
 }
