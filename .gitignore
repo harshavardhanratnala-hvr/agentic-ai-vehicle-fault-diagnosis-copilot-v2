@@ -3,6 +3,7 @@ data/raw/*.csv
 data/raw/nhtsa/*.csv
 data/processed/*.csv
 data/processed/*.npz
+data/processed/*.joblib
 !data/**/.gitkeep
 
 # Exception: small, curated demo fixtures the dashboard needs to run out of the box

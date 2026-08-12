@@ -109,6 +109,39 @@ update both places if the threshold ever changes.
 This is what the dashboard (phase 3) will actually call instead of re-running notebook
 cells by hand.
 
+## RAG retrieval (Phase 4 of the RAG/agent track — the thin slice, not the full agent)
+
+`src/rag.py` gives one function, `search_recalls_tsbs(query) -> [cited records]`, over the
+NHTSA corpus below. Deliberately not the full agent loop — no tool-calling, no wiring to
+`classify_fault`'s output yet, just retrieval on its own, checked before anything downstream
+is allowed to trust it.
+
+**Method: TF-IDF + cosine similarity, not dense embeddings.** The original plan called for
+`sentence-transformers`, but installing it (it needs `torch`) failed repeatedly in the dev
+environment with "no space left on device." TF-IDF is a legitimate, standard lexical-retrieval
+baseline, not a quiet downgrade — it's what BM25-style search is built on, and for a few
+thousand short, structured records like these it performs well (see the gate results below).
+Swapping in dense embeddings later only touches `_build_index()`/`search_recalls_tsbs()` in
+`rag.py`; the corpus loading and the gate are unaffected either way.
+
+**Chunking:** each row (one recall notice or one complaint narrative) is already a single
+short record, a paragraph at most — there's no long document here that needs splitting into
+multiple chunks. One row = one document. That's the whole chunking step for this corpus.
+
+**The retrieval-quality gate.** This dataset has no external "fault code -> correct record"
+answer key to test against — these are free-text recall/complaint narratives, not a labeled
+lookup table. So the gate uses self-retrieval instead: sample real records, build a query from
+a realistic fragment of each (words 5-25, simulating how someone would actually describe a
+symptom, not the record's full exact text), and check whether retrieval finds that same record
+back. This validates the retrieval mechanism works correctly on real data; it is *not* a claim
+that retrieval finds the single correct citation for a genuinely novel complaint it's never
+seen — that would need real usage feedback or a hand-labeled test set the team doesn't have.
+
+Result on 30 sampled records: **27/30 (90%) at top-1, 29/30 (97%) at top-5.** The one miss was
+boilerplate recall-notification text ("received notification of NHTSA Campaign Number...")
+duplicated verbatim across many complaints — genuinely ambiguous text, not a retrieval bug.
+Re-run it yourself: `python src/rag.py`.
+
 ## RAG corpus (Phase 1 of the RAG/agent track)
 
 `data/raw/nhtsa/recalls_battery_electrical.csv` (203 recalls) and
@@ -121,9 +154,10 @@ collected in `agentic-ai-vehicle-fault-diagnosis-and-repair-copilot`; copied her
 per the team's scope decision to finish the model and a real dashboard first, then do a
 thin, verified retrieval slice before attempting the full agent tool-calling loop.
 
-Status: collected and filtered only. Chunking, embedding, and the retrieval-quality gate
-(run known fault codes through the index, confirm it surfaces the right record before
-anything is allowed to cite it) are not started.
+Status (updated 2026-08-12): collected, filtered, chunked, indexed, and retrieval-gated — see
+"RAG retrieval (Phase 4)" above. Still not started: the agent tool-calling loop that wires
+`search_recalls_tsbs` to `classify_fault`'s output, and the fleet-manager dashboard surfacing
+both together. Those stay deliberately deferred per the team's scope decision.
 
 ## Known tradeoffs, by design (not oversights)
 
