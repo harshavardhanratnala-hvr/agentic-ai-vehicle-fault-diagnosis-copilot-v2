@@ -145,9 +145,17 @@ def run_retrieval_gate(n_samples: int = 30, top_k: int = 5, seed: int = 42) -> d
     "correct" citation for a novel, unseen complaint -- that would need real usage feedback
     (thumbs up/down on citations) or a hand-labeled test set the team doesn't have yet.
 
+    Also reports Recall@1 / Recall@k and MRR@k (mean reciprocal rank) -- the standard metric
+    vocabulary for retrieval, so this is directly comparable to how any other team would
+    report their own retrieval numbers, even though the ground truth here is self-generated
+    rather than hand-labeled. "top_1_rate" IS Recall@1 (renamed for plain-language clarity);
+    "top_k_rate" IS Recall@k. MRR@k additionally rewards ranking the right record 2nd or 3rd
+    rather than missing it outright -- Recall@k alone treats "found at rank 1" and "found at
+    rank 5" as equally good, which understates a retriever that's usually close but not first.
+
     Returns:
         {"n_samples": int, "top_1_hits": int, "top_k_hits": int,
-         "top_1_rate": float, "top_k_rate": float, "failures": [...]}
+         "top_1_rate": float, "top_k_rate": float, "mrr_at_k": float, "failures": [...]}
     """
     import re
 
@@ -158,6 +166,7 @@ def run_retrieval_gate(n_samples: int = 30, top_k: int = 5, seed: int = 42) -> d
 
     top_1_hits = 0
     top_k_hits = 0
+    reciprocal_ranks = []
     failures = []
 
     for _, row in sample.iterrows():
@@ -173,7 +182,9 @@ def run_retrieval_gate(n_samples: int = 30, top_k: int = 5, seed: int = 42) -> d
             top_1_hits += 1
         if row["citation"] in citations:
             top_k_hits += 1
+            reciprocal_ranks.append(1.0 / (citations.index(row["citation"]) + 1))
         else:
+            reciprocal_ranks.append(0.0)
             failures.append({"citation": row["citation"], "source": row["source"], "query_fragment": fragment})
 
     n = len(sample)
@@ -181,6 +192,7 @@ def run_retrieval_gate(n_samples: int = 30, top_k: int = 5, seed: int = 42) -> d
         "n_samples": n,
         "top_1_hits": top_1_hits,
         "top_k_hits": top_k_hits,
+        "mrr_at_k": round(sum(reciprocal_ranks) / n, 4) if n else 0.0,
         "top_1_rate": round(top_1_hits / n, 4),
         "top_k_rate": round(top_k_hits / n, 4),
         "failures": failures,
@@ -195,7 +207,8 @@ if __name__ == "__main__":
     gate = run_retrieval_gate(n_samples=30, top_k=5)
     print(f"Retrieval gate: {gate['top_1_hits']}/{gate['n_samples']} top-1, "
           f"{gate['top_k_hits']}/{gate['n_samples']} top-5 "
-          f"(top-1 rate {gate['top_1_rate']:.0%}, top-5 rate {gate['top_k_rate']:.0%})")
+          f"(Recall@1 {gate['top_1_rate']:.0%}, Recall@5 {gate['top_k_rate']:.0%}, "
+          f"MRR@5 {gate['mrr_at_k']:.3f})")
     if gate["failures"]:
         print("Failures (record not retrieved in top-5 from its own fragment):")
         for f in gate["failures"]:

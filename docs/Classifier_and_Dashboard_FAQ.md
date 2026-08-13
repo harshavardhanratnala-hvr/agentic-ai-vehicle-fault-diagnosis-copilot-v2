@@ -133,3 +133,23 @@ Two unrelated things share the word "explanation" in this project:
   involved at all.
 
 If a coach asks about "the explanation," check which one they mean before answering.
+
+## What does `generate_ticket()` (`src/agent.py`) actually do?
+
+This is the piece that closes the loop and makes "repair copilot" literal: it calls
+`classify_fault`, and if the vehicle is flagged, calls `explain_prediction` to get the top
+driving sensors, turns those into a plain-English query (e.g. `"motor RPM hour of day"`),
+runs that query through `search_recalls_tsbs`, and fills a fixed template with all of it —
+risk level, probability, driving sensors, and cited NHTSA precedent — into one readable ticket
+with Summary / Likely Cause / Recommended Action / Supporting Evidence / Confidence Note
+sections.
+
+**Why a template instead of an LLM writing the paragraph:** the original architecture sketch
+had an LLM composing this text. We priced that out and it needs a paid Anthropic/OpenAI API
+key with no free tier — not worth the cost or the external dependency for a capstone demo. A
+template produces the same structured, cited sections, deterministically, for free, with no
+network call. It reads a little more like a filled-in form than natural prose, but every
+number and citation in it is real, not model-invented — which is arguably a safer property
+for something that's ultimately advising a repair. Swapping in a real LLM call later, if the
+team wants it, only means replacing `_compose_ticket()` — the query-building and retrieval
+that feed it are unchanged.
