@@ -26,6 +26,7 @@ import xgboost as xgb
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "models" / "xgboost_all_vehicles.joblib"
 SELECTED_FEATURES_PATH = BASE_DIR / "data" / "processed" / "selected_feature_cols_all_vehicles.json"
+BASELINE_MODEL_PATH = BASE_DIR / "models" / "logistic_regression_all_vehicles.joblib"
 
 # Must match notebooks 08-12 exactly -- these define what "engineered features" means.
 RAW_SENSOR_COLS = ["SOC", "SOH", "Charging_Cycles", "Battery_Temp", "Motor_RPM", "Motor_Torque",
@@ -45,6 +46,7 @@ FLAG_THRESHOLD = 0.5
 
 _model = None
 _selected_features = None
+_baseline_model = None
 
 
 def _load_model():
@@ -59,6 +61,20 @@ def _load_model():
         with open(SELECTED_FEATURES_PATH) as f:
             _selected_features = json.load(f)
     return _model, _selected_features
+
+
+def _load_baseline_model():
+    """Load notebook 9's baseline (logistic regression, 10 raw features, no engineering), cached
+    separately from the trained model -- the two are unrelated artifacts, not versions of the same
+    model."""
+    global _baseline_model
+    if _baseline_model is None:
+        if not BASELINE_MODEL_PATH.exists():
+            raise FileNotFoundError(
+                f"{BASELINE_MODEL_PATH} not found. Run notebook 09 first to train and save the baseline model."
+            )
+        _baseline_model = joblib.load(BASELINE_MODEL_PATH)
+    return _baseline_model
 
 
 def engineer_features(readings_df: pd.DataFrame, vehicle_start_time=None) -> pd.DataFrame:
@@ -168,6 +184,54 @@ def classify_fault_batch(readings_df: pd.DataFrame, vehicle_start_time=None) -> 
         "timestamp": ready["timestamp"],
         "probability": probabilities,
     })
+    out["risk_level"] = out["probability"].apply(_risk_level)
+    out["prediction"] = out["probability"] >= FLAG_THRESHOLD
+    return out
+
+
+def classify_fault_baseline(readings_df: pd.DataFrame) -> dict:
+    """Predict fault risk with notebook 9's baseline model: the 10 raw sensor readings only, no
+    rolling/lag/calendar engineering. Unlike classify_fault, needs no 24h warm-up window -- there's
+    no rolling feature to be incomplete -- so it can score the very last row handed in directly.
+
+    Same return shape as classify_fault, for a like-for-like comparison in the dashboard.
+    """
+    missing = [c for c in ["timestamp"] + RAW_SENSOR_COLS if c not in readings_df.columns]
+    if missing:
+        raise ValueError(f"readings_df is missing required columns: {missing}")
+
+    model = _load_baseline_model()
+    df = readings_df.copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df = df.sort_values("timestamp").reset_index(drop=True)
+
+    latest = df.iloc[[-1]]
+    probability = float(model.predict_proba(latest[RAW_SENSOR_COLS])[0, 1])
+
+    return {
+        "probability": round(probability, 6),
+        "risk_level": _risk_level(probability),
+        "prediction": probability >= FLAG_THRESHOLD,
+        "timestamp": latest["timestamp"].iloc[0],
+        "n_features_used": len(RAW_SENSOR_COLS),
+    }
+
+
+def classify_fault_batch_baseline(readings_df: pd.DataFrame) -> pd.DataFrame:
+    """Same as classify_fault_baseline, but one row per timestamp instead of just the latest --
+    for plotting the baseline's risk trend over a window, same as classify_fault_batch does for
+    the trained model."""
+    missing = [c for c in ["timestamp"] + RAW_SENSOR_COLS if c not in readings_df.columns]
+    if missing:
+        raise ValueError(f"readings_df is missing required columns: {missing}")
+
+    model = _load_baseline_model()
+    df = readings_df.copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df = df.sort_values("timestamp").reset_index(drop=True)
+
+    probabilities = model.predict_proba(df[RAW_SENSOR_COLS])[:, 1]
+    out = pd.DataFrame({"timestamp": df["timestamp"], "probability": probabilities})
     out["risk_level"] = out["probability"].apply(_risk_level)
     out["prediction"] = out["probability"] >= FLAG_THRESHOLD
     return out
