@@ -159,6 +159,23 @@ def inject_theme():
         }
         .card h4 { margin: 0 0 0.5rem 0; font-size: 1.35rem; color: #0f172a; font-weight: 700; }
         .card p.desc { color: #64748b; font-size: 1.02rem; line-height: 1.5; margin-bottom: 0.9rem; }
+
+        /* Home's 4 step cards: fixed min-height so a 2-line title ("Live Diagnosis" wrapping)
+           doesn't make that card taller than its 1-line neighbors. */
+        .step-card { min-height: 180px; display: flex; flex-direction: column; }
+        /* Reserve 2 lines of title height on every step card, so a 1-line title ("About")
+           and a 2-line title ("Live Diagnosis") still leave the description starting at the
+           same y position instead of staggering across the row. */
+        .step-card h4 { line-height: 1.25; min-height: 3.4rem; }
+
+        /* st.container(key="card_...") -- used anywhere a "card" needs to wrap a native
+           Streamlit widget (chart, slider, dataframe) that can't go inside a raw HTML
+           string. Every such key is prefixed "card_" so this one rule styles all of them. */
+        div[class*="st-key-card_"] {
+            background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;
+            padding: 1.4rem 1.5rem; box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+        }
+
         .badge {
             display: inline-block; font-size: 0.82rem; font-weight: 700; padding: 0.2rem 0.6rem;
             border-radius: 6px; margin-bottom: 0.6rem; letter-spacing: 0.03em;
@@ -218,24 +235,29 @@ def page_header(title: str, subtitle: str = ""):
 # Reusable SVG components (unchanged)
 # ---------------------------------------------------------------------------
 
-def _car_gauge_icon_svg(fraction: float, color: str) -> str:
+def _car_gauge_icon_svg(fraction: float, color: str, size: int = 64, on_dark: bool = False) -> str:
+    """The car+speedometer icon used next to each vehicle/scenario option in the sidebar.
+    on_dark swaps the body/wheel fill to a light slate so the same icon reads clearly when
+    placed on the navy hero background instead of the sidebar's white row background."""
+    body_color = "#cbd5e1" if on_dark else "#334155"
+    wheel_color = "#94a3b8" if on_dark else "#0f172a"
     cx, cy, r = 50, 40, 30
     angle = math.radians(180 - fraction * 180)
     nx, ny = cx + (r - 6) * math.cos(angle), cy - (r - 6) * math.sin(angle)
     arc_len = math.pi * r
     return (
-        '<svg viewBox="0 0 100 100" width="64" height="64" xmlns="http://www.w3.org/2000/svg">'
-        f'<path d="M {cx - r} {cy} A {r} {r} 0 0 1 {cx + r} {cy}" fill="none" stroke="#334155" '
+        f'<svg viewBox="0 0 100 100" width="{size}" height="{size}" xmlns="http://www.w3.org/2000/svg">'
+        f'<path d="M {cx - r} {cy} A {r} {r} 0 0 1 {cx + r} {cy}" fill="none" stroke="{body_color}" '
         'stroke-width="7" stroke-linecap="round" opacity="0.35"/>'
         f'<path d="M {cx - r} {cy} A {r} {r} 0 0 1 {cx + r} {cy}" fill="none" stroke="{color}" '
         f'stroke-width="7" stroke-linecap="round" stroke-dasharray="{fraction * arc_len:.1f} 999"/>'
         f'<circle cx="{cx}" cy="{cy}" r="3.5" fill="{color}"/>'
         f'<line x1="{cx}" y1="{cy}" x2="{nx:.1f}" y2="{ny:.1f}" stroke="{color}" stroke-width="4" stroke-linecap="round"/>'
         '<g transform="translate(16,50)">'
-        '<path d="M6 12 L16 -1 L52 -1 L62 12 Z" fill="#334155"/>'
-        '<rect x="0" y="12" width="68" height="14" rx="7" fill="#334155"/>'
-        '<circle cx="14" cy="28" r="6.5" fill="#0f172a"/>'
-        '<circle cx="54" cy="28" r="6.5" fill="#0f172a"/>'
+        f'<path d="M6 12 L16 -1 L52 -1 L62 12 Z" fill="{body_color}"/>'
+        f'<rect x="0" y="12" width="68" height="14" rx="7" fill="{body_color}"/>'
+        f'<circle cx="14" cy="28" r="6.5" fill="{wheel_color}"/>'
+        f'<circle cx="54" cy="28" r="6.5" fill="{wheel_color}"/>'
         '</g>'
         '</svg>'
     )
@@ -290,26 +312,31 @@ def risk_colors(risk_level: str):
 
 def render_result_card(title: str, result: dict, note: str = None):
     color, pill_bg, pill_fg = risk_colors(result["risk_level"])
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    left, right = st.columns([1, 1.6])
-    with left:
-        st.markdown(
-            f'<div style="text-align:center">{_radial_gauge_svg(result["probability"], color, "PROBABILITY")}</div>',
-            unsafe_allow_html=True,
-        )
-    with right:
-        st.markdown(
-            f"""
-            <div class="result-copy">
-                <h3>{title}</h3>
-                <span class="risk-pill" style="background:{pill_bg}; color:{pill_fg};">{result['risk_level'].upper()}</span>
-                <p>Threshold {FLAG_THRESHOLD:.0%} &middot; {result['timestamp']}</p>
-                {f'<p>{note}</p>' if note else ''}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    st.markdown('</div>', unsafe_allow_html=True)
+    # st.columns is a real widget, not raw HTML, so this has to be a real container --
+    # opening a <div class="card"> in one st.markdown call and closing it in another
+    # doesn't nest (each st.markdown call is its own isolated block), which was rendering
+    # as an empty white box followed by unstyled content. st.container(key=...) sidesteps
+    # that: see the "card_" CSS rule in inject_theme.
+    card_key = "card_result_" + "".join(c if c.isalnum() else "_" for c in title.lower())
+    with st.container(key=card_key):
+        left, right = st.columns([1, 1.6])
+        with left:
+            st.markdown(
+                f'<div style="text-align:center">{_radial_gauge_svg(result["probability"], color, "PROBABILITY")}</div>',
+                unsafe_allow_html=True,
+            )
+        with right:
+            st.markdown(
+                f"""
+                <div class="result-copy">
+                    <h3>{title}</h3>
+                    <span class="risk-pill" style="background:{pill_bg}; color:{pill_fg};">{result['risk_level'].upper()}</span>
+                    <p>Threshold {FLAG_THRESHOLD:.0%} &middot; {result['timestamp']}</p>
+                    {f'<p>{note}</p>' if note else ''}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -321,9 +348,6 @@ def render_sidebar():
     (vehicle, scenario_name, readings_full) for the current selection. Call this once at the
     top of every page -- it's cheap, and it's what keeps the selection in sync across pages."""
     with st.sidebar:
-        st.markdown("### Fault Early Warning Dashboard")
-        st.caption("Team NodePair")
-        st.markdown("---")
         st.markdown("**Vehicle**")
         vehicle = render_image_choice(
             options=list(VEHICLE_PROFILES.keys()),
@@ -365,9 +389,6 @@ def render_sidebar_minimal():
     """Lighter sidebar for pages that don't depend on the vehicle/scenario selection (About).
     No picker to keep in sync, so this skips it rather than showing an irrelevant filter."""
     with st.sidebar:
-        st.markdown("### Fault Early Warning Dashboard")
-        st.caption("Team NodePair")
-        st.markdown("---")
         with st.expander("About the models"):
             st.write("**Baseline** — logistic regression, present readings only, F2 0.328.")
             st.write("**Advanced** — tuned XGBoost, 24h history, F2 0.706.")

@@ -98,8 +98,7 @@ if has_advanced:
     st.write("")
 
     left, right = st.columns([1.4, 1])
-    with left:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+    with left, st.container(key="card_trend_chart"):
         st.markdown("#### Probability over the window")
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -117,10 +116,8 @@ if has_advanced:
             hovermode="x unified",
         )
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-        st.markdown('</div>', unsafe_allow_html=True)
 
-    with right:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+    with right, st.container(key="card_why_factors"):
         st.markdown("#### Why")
         st.caption("Top contributing readings.")
         max_abs = max(abs(f["impact"]) for f in factors) or 1.0
@@ -144,7 +141,6 @@ if has_advanced:
                 """,
                 unsafe_allow_html=True,
             )
-        st.markdown('</div>', unsafe_allow_html=True)
 
     with st.expander("Raw readings for this window"):
         st.dataframe(readings_full, width="stretch")
