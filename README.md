@@ -14,6 +14,7 @@ ______________________________________________________________________
 - [Installation & Setup](#installation--setup)
 - [How to Run / Reproduce](#how-to-run--reproduce)
 - [Contents of the Repository](#contents-of-the-repository)
+- [Documentation](#documentation)
 - [Notebook Walkthrough](#notebook-walkthrough)
 - [Results](#results)
 
@@ -88,7 +89,7 @@ Shared conventions — please keep these identical across all notebooks so the m
 **To launch the dashboard:**
 
 ```bash
-streamlit run dashboard/app.py
+streamlit run app.py
 ```
 
 ______________________________________________________________________
@@ -124,6 +125,15 @@ vehicle-fault-diagnosis-copilot/
 ├── requirements.txt
 └── README.md
 ```
+
+______________________________________________________________________
+
+# Documentation
+
+- **`Business_Goal_and_Process.md`**
+  The formal write-up: business goal, why F2 was chosen as the metric, the baseline model and score, the full notebook 08–12 process (feature engineering, feature selection, tuning), the final scoreboard, the note on removing subsampling from feature selection and hyperparameter search, the `classify_fault` inference function, RAG corpus status, and the known tradeoffs (stratified split, merged vehicles). Read this one for exact numbers and reasoning.
+- **`Classifier_and_Dashboard_FAQ.md`**
+  A plain-language companion FAQ: what `classifier.py` does step by step, where the 0.5 flag threshold came from, why a prediction needs 24 hours of history for a 6-hour-ahead target, whether the vehicle needs to be driving (just connected and reporting hourly), the realistic Streamlit dashboard plan, a real bug the "why" panel caught (`hours_since_start` computed from the wrong origin), and the distinction between the dashboard's SHAP-based "why" panel and RAG's document citations. Read this one if you just want the "wait, why did we do that" answer without digging through the formal doc.
 
 ______________________________________________________________________
 
