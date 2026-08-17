@@ -1,0 +1,4 @@
+[client]
+# Hides Streamlit's local dev toolbar (the "Deploy" bar) in the running app so it doesn't
+# sit on top of page content, on both local runs and the deployed Community Cloud app.
+toolbarMode = "minimal"

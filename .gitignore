@@ -6,11 +6,18 @@ data/processed/*.npz
 !data/**/.gitkeep
 
 # Exception: small, curated demo fixtures the dashboard needs to run out of the box
-# (48h each, ~10KB total -- not the bulk processed/raw data the rule above excludes)
+# (48h each, ~85KB total across 4 vehicle profiles x 3 scenarios -- not the bulk
+# processed/raw data the rule above excludes)
 !data/processed/scenarios/*.csv
 
 # Models (large binary files)
 models/*.joblib
+
+# Exception: the two models the deployed dashboard actually loads (src/classifier.py).
+# The other joblib dumps here are experiment artifacts (random forest variants, lagged/
+# gridsearch sweeps) that were never promoted to production -- no reason to ship those.
+!models/xgboost_all_vehicles_gridsearch.joblib
+!models/logistic_regression_all_vehicles.joblib
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
@@ -22,8 +29,22 @@ __pycache__/
 .venv/
 venv/
 
+# Secrets - never commit API keys
+.env
+.env.*
+
 # OS
 .DS_Store
 
 # Office lock files
 slides/~$*
+
+# Scratch/checkpoint files from staged notebook execution (see notebooks/13)
+scripts_tmp/
+data/processed/_ckpt_*
+build_nb13_final.py
+notebooks/build_nb13*.py
+notebooks/nb13_run.log
+build_nb14_run.py
+smoketest_gridsearch.py
+notebooks/nb14_run.log

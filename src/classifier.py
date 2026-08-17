@@ -1,8 +1,11 @@
 """Single entry point for the fault classifier: raw sensor readings in, a risk call out.
 
-Wraps `models/xgboost_all_vehicles.joblib` (tuned on the full 140,067-row training set,
-53 selected features, F2 = 0.594 — see `docs/Business_Goal_and_Process.md`) so the
-dashboard (or anything else) can call one function instead of re-running notebook cells.
+Wraps `models/xgboost_all_vehicles_gridsearch.joblib` (full-grid `GridSearchCV` tuning on the
+full 140,067-row training set, same 53 selected features, F2 = 0.706 — see notebook 14 and
+`docs/Business_Goal_and_Process.md`) so the dashboard (or anything else) can call one function
+instead of re-running notebook cells. This replaced the earlier `RandomizedSearchCV` model
+(F2 = 0.594, notebook 12) once the exhaustive grid search came back with a real, substantial
+improvement -- see `docs/Classifier_and_Dashboard_FAQ.md` for the honest before/after.
 
 Usage:
     from classifier import classify_fault
@@ -24,8 +27,16 @@ import pandas as pd
 import xgboost as xgb
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-MODEL_PATH = BASE_DIR / "models" / "xgboost_all_vehicles.joblib"
+MODEL_PATH = BASE_DIR / "models" / "xgboost_all_vehicles_gridsearch.joblib"
 SELECTED_FEATURES_PATH = BASE_DIR / "data" / "processed" / "selected_feature_cols_all_vehicles.json"
+
+# The baseline model (notebook 09, coach spec): logistic regression on the 10 raw sensor
+# columns only, present-moment values, no rolling/lag/calendar engineering at all. This is
+# what the dashboard's "Load present readings" path calls -- deliberately simple, on
+# purpose, per the coach: "the purpose of a baseline model is not that it does a good job,
+# but to see what can be done easily." It needs exactly one row of current readings, no
+# history, unlike the advanced model below.
+BASELINE_MODEL_PATH = BASE_DIR / "models" / "logistic_regression_all_vehicles.joblib"
 
 # Must match notebooks 08-12 exactly -- these define what "engineered features" means.
 RAW_SENSOR_COLS = ["SOC", "SOH", "Charging_Cycles", "Battery_Temp", "Motor_RPM", "Motor_Torque",
@@ -45,6 +56,7 @@ FLAG_THRESHOLD = 0.5
 
 _model = None
 _selected_features = None
+_baseline_model = None
 
 
 def _load_model():
@@ -53,12 +65,25 @@ def _load_model():
     if _model is None:
         if not MODEL_PATH.exists():
             raise FileNotFoundError(
-                f"{MODEL_PATH} not found. Run notebooks 08-12 first to train and save the model."
+                f"{MODEL_PATH} not found. Run notebooks 08-12 and then notebook 14 "
+                f"(GridSearchCV tuning) first to train and save the model."
             )
         _model = joblib.load(MODEL_PATH)
         with open(SELECTED_FEATURES_PATH) as f:
             _selected_features = json.load(f)
     return _model, _selected_features
+
+
+def _load_baseline_model():
+    """Load the baseline logistic regression pipeline once, cache for reuse."""
+    global _baseline_model
+    if _baseline_model is None:
+        if not BASELINE_MODEL_PATH.exists():
+            raise FileNotFoundError(
+                f"{BASELINE_MODEL_PATH} not found. Run notebook 09 first to train and save it."
+            )
+        _baseline_model = joblib.load(BASELINE_MODEL_PATH)
+    return _baseline_model
 
 
 def engineer_features(readings_df: pd.DataFrame, vehicle_start_time=None) -> pd.DataFrame:
@@ -171,6 +196,44 @@ def classify_fault_batch(readings_df: pd.DataFrame, vehicle_start_time=None) -> 
     out["risk_level"] = out["probability"].apply(_risk_level)
     out["prediction"] = out["probability"] >= FLAG_THRESHOLD
     return out
+
+
+def classify_fault_baseline(readings_df: pd.DataFrame) -> dict:
+    """Predict fault risk from the single most recent row of *present* sensor readings only --
+    no history, no feature engineering, no `vehicle_start_time`. This is the coach-spec
+    baseline (notebook 09): logistic regression on the 10 raw sensor columns as-is.
+
+    Deliberately kept dumb -- it's a baseline, not a competitor to the advanced model. It
+    exists so the dashboard has a real, separately-clickable "present readings" path, distinct
+    from the advanced model's "last 24h" path, instead of only ever showing the advanced
+    model's output (coach feedback: the two should be visibly different demo paths, not just
+    a metrics table row).
+
+    `readings_df` needs `timestamp` plus the 10 raw sensor columns (RAW_SENSOR_COLS); only the
+    latest row by timestamp is used. Uses the model's default 0.5 decision threshold --
+    F2-tuning a baseline threshold isn't worth doing since the point of a baseline is that it's
+    the simplest reasonable thing, not a tuned competitor to the advanced model.
+
+    Returns the same shape as classify_fault: {"probability", "risk_level", "prediction",
+    "timestamp", "n_features_used"}.
+    """
+    missing = [c for c in ["timestamp"] + RAW_SENSOR_COLS if c not in readings_df.columns]
+    if missing:
+        raise ValueError(f"readings_df is missing required columns: {missing}")
+
+    model = _load_baseline_model()
+    df = readings_df.copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    latest = df.sort_values("timestamp").iloc[[-1]]
+
+    probability = float(model.predict_proba(latest[RAW_SENSOR_COLS])[0, 1])
+    return {
+        "probability": round(probability, 6),
+        "risk_level": _risk_level(probability),
+        "prediction": probability >= FLAG_THRESHOLD,
+        "timestamp": latest["timestamp"].iloc[0],
+        "n_features_used": len(RAW_SENSOR_COLS),
+    }
 
 
 def explain_prediction(readings_df: pd.DataFrame, top_n: int = 3, vehicle_start_time=None) -> list:
