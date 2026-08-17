@@ -15,13 +15,22 @@ st.set_page_config(
 )
 inject_theme()
 
+# Grouped nav with Streamlit's built-in Material icons (not emoji -- small, monochrome,
+# consistent with the rest of the no-emoji redesign). Section headers cost nothing and make
+# the five pages easier to scan at a glance.
 pg = st.navigation(
-    [
-        st.Page("pages/0_Home.py", title="Home", default=True),
-        st.Page("pages/1_Live_Diagnosis.py", title="Live Diagnosis"),
-        st.Page("pages/2_Try_Your_Own.py", title="Try Your Own"),
-        st.Page("pages/3_Compare_Models.py", title="Compare Models"),
-        st.Page("pages/4_About.py", title="About"),
-    ]
+    {
+        "Overview": [
+            st.Page("pages/0_Home.py", title="Home", icon=":material/home:", default=True),
+        ],
+        "Diagnostics": [
+            st.Page("pages/1_Live_Diagnosis.py", title="Live Diagnosis", icon=":material/speed:"),
+            st.Page("pages/2_Try_Your_Own.py", title="Try Your Own", icon=":material/tune:"),
+            st.Page("pages/3_Compare_Models.py", title="Compare Models", icon=":material/analytics:"),
+        ],
+        "Documentation": [
+            st.Page("pages/4_About.py", title="About", icon=":material/info:"),
+        ],
+    }
 )
 pg.run()
