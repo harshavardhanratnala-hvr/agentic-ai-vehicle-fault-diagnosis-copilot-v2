@@ -32,8 +32,7 @@ with col_baseline:
     st.markdown(
         """
         <div class="card">
-            <span class="badge badge-blue">BASELINE</span>
-            <span class="badge" style="background:#f1f5f9; color:#334155;">F2 0.328</span>
+            <span class="badge badge-blue">ADVANCED MODEL I</span>
             <h4>Present reading only</h4>
             <p class="desc">Logistic regression, no history needed.</p>
         </div>
@@ -49,8 +48,7 @@ with col_advanced:
     st.markdown(
         """
         <div class="card">
-            <span class="badge badge-purple">ADVANCED</span>
-            <span class="badge" style="background:#f1f5f9; color:#334155;">F2 0.706</span>
+            <span class="badge badge-purple">ADVANCED MODEL II</span>
             <h4>Last 24 hours</h4>
             <p class="desc">Tuned XGBoost, 53 engineered features.</p>
         </div>
@@ -86,7 +84,7 @@ if has_baseline or has_advanced:
     st.markdown('<div class="section-label" style="margin-top:1.6rem;">Results</div>', unsafe_allow_html=True)
 
 if has_baseline:
-    render_result_card("Baseline result", st.session_state["baseline_result"])
+    render_result_card("Advanced Model I - Result", st.session_state["baseline_result"])
     st.write("")
 
 if has_advanced:
@@ -94,7 +92,7 @@ if has_advanced:
     trend = st.session_state["advanced_trend"]
     factors = st.session_state["advanced_factors"]
 
-    render_result_card("Advanced result", result)
+    render_result_card("Advanced Model II – Result", result)
     st.write("")
 
     left, right = st.columns([1.4, 1])
@@ -152,4 +150,4 @@ if has_baseline or has_advanced:
         st.page_link("pages/2_Try_Your_Own.py", label="Try editing a reading yourself")
     with n2:
         if has_baseline and has_advanced:
-            st.page_link("pages/3_Compare_Models.py", label="Compare baseline vs. advanced")
+            st.page_link("pages/3_Compare_Models.py", label="Compare Advanced Model I vs. Advanced Model II")

@@ -30,9 +30,8 @@ else:
         st.markdown(
             f"""
             <div class="card" style="text-align:center;">
-                <span class="badge badge-blue">LOGISTIC REGRESSION</span>
-                {_radial_gauge_svg(b["probability"], risk_colors(b["risk_level"])[0], "BASELINE", size=170)}
-                <p style="margin-top:0.6rem; color:#64748b;">Present readings only &middot; F2 0.328</p>
+                <span class="badge badge-blue">ADVANCED MODEL I</span>
+                {_radial_gauge_svg(b["probability"], risk_colors(b["risk_level"])[0], "", size=170)}
             </div>
             """,
             unsafe_allow_html=True,
@@ -41,13 +40,12 @@ else:
         st.markdown(
             f"""
             <div class="card" style="text-align:center;">
-                <span class="badge badge-purple">XGBOOST (GRIDSEARCH)</span>
-                {_radial_gauge_svg(a["probability"], risk_colors(a["risk_level"])[0], "ADVANCED", size=170)}
-                <p style="margin-top:0.6rem; color:#64748b;">24h rolling/lag history &middot; F2 0.706</p>
+                <span class="badge badge-purple">ADVANCED MODEL II</span>
+                {_radial_gauge_svg(a["probability"], risk_colors(a["risk_level"])[0], "", size=170)}
             </div>
             """,
             unsafe_allow_html=True,
         )
 
     st.write("")
-    st.caption("The gap above is what 24h of history buys the advanced model over the baseline.")
+    st.caption("The gap above is what 24h of history buys Advanced Model II over Advanced Model I.")

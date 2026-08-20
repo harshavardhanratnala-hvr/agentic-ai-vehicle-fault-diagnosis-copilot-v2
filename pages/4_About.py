@@ -13,9 +13,9 @@ with c1:
     st.markdown(
         """
         <div class="card">
-            <span class="badge badge-blue">BASELINE</span>
+            <span class="badge badge-blue">ADVANCED MODEL I</span>
             <h4>Logistic Regression</h4>
-            <p class="desc">Present moment only, no history. F2 = 0.328.</p>
+            <p class="desc">Present moment only, no history.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -24,9 +24,9 @@ with c2:
     st.markdown(
         """
         <div class="card">
-            <span class="badge badge-purple">ADVANCED</span>
+            <span class="badge badge-purple">ADVANCED MODEL II</span>
             <h4>XGBoost, tuned</h4>
-            <p class="desc">53 engineered features, 24h history. F2 = 0.706.</p>
+            <p class="desc">53 engineered features, 24h history.</p>
         </div>
         """,
         unsafe_allow_html=True,

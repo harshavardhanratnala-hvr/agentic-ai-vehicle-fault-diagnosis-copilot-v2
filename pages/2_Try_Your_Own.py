@@ -24,9 +24,9 @@ from dashboard_lib import (
 
 vehicle, scenario_name, readings_full = render_sidebar()
 
-page_header("Try Your Own", "Check a single reading against the baseline model.")
+page_header("Manual Sensor Entry (MSE)", "Check a single reading against Advanced Model I.")
 
-st.caption("No history needed here -- that's the point of the baseline model. For the advanced model, which needs a real 24h window, use Live Diagnosis instead.")
+st.caption("No history needed here -- that's the point of Advanced Model I. For Advanced Model II, which needs a real 24h window, use Live Diagnosis instead.")
 
 latest_row = readings_full.iloc[-1]
 manual_values = {}
@@ -53,7 +53,7 @@ with st.container(key="card_manual_inputs"):
 st.write("")
 predict_manual = st.button("Check this reading", key="predict_manual", width="stretch", type="primary")
 if predict_manual:
-    with st.spinner("Checking the baseline model against your reading..."):
+    with st.spinner("Checking Advanced Model I against your reading..."):
         time.sleep(0.3)
         manual_row = latest_row.copy()
         for col, val in manual_values.items():
@@ -67,8 +67,8 @@ has_baseline = "baseline_result" in st.session_state
 
 if has_baseline:
     st.markdown('<div class="section-label" style="margin-top:1.6rem;">Result</div>', unsafe_allow_html=True)
-    render_result_card("Baseline result", st.session_state["baseline_result"])
+    render_result_card("Advanced Model I result", st.session_state["baseline_result"])
     st.write("")
-    st.page_link("pages/1_Live_Diagnosis.py", label="See the advanced model on a full scenario")
+    st.page_link("pages/1_Live_Diagnosis.py", label="See Advanced Model II on a full scenario")
 else:
     st.info("Set your reading above and check it to see a result.")

@@ -26,7 +26,7 @@ pg = st.navigation(
         ],
         "Diagnostics": [
             st.Page("pages/1_Live_Diagnosis.py", title="Live Diagnosis"),
-            st.Page("pages/2_Try_Your_Own.py", title="Try Your Own"),
+            st.Page("pages/2_Try_Your_Own.py", title="Manual Sensor Entry (MSE)"),
             st.Page("pages/3_Compare_Models.py", title="Compare Models"),
         ],
         "Documentation": [

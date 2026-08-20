@@ -22,7 +22,6 @@ st.markdown(
             <h1>Fault Early Warning Dashboard</h1>
             <p class="sub">Predicts battery and drivetrain faults up to 6 hours ahead, from live telemetry.</p>
             <div class="chip-row">
-                <span class="chip">XGBoost · F2 0.706</span>
                 <span class="chip">53 engineered features</span>
                 <span class="chip">Team NodePair</span>
             </div>
@@ -40,8 +39,8 @@ c1, c2, c3, c4 = st.columns(4)
 # full icon, so this stays a simple accent rather than another emoji-style decoration.
 steps = [
     ("Live Diagnosis", "Load a scenario, see the risk call and why.", "#2563eb"),
-    ("Try Your Own", "Edit a reading, watch both models react.", "#7c3aed"),
-    ("Compare Models", "Baseline vs. advanced, side by side.", "#0891b2"),
+    ("Manual Sensor Entry (MSE)", "Edit a reading, watch both models react.", "#7c3aed"),
+    ("Compare Models", "Advanced Model I vs. Advanced Model II, side by side.", "#0891b2"),
     ("About", "The data, the models, the metric.", "#d97706"),
 ]
 for col, (title, desc, accent) in zip([c1, c2, c3, c4], steps):

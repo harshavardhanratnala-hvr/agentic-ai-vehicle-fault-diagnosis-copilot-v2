@@ -276,9 +276,12 @@ def _radial_gauge_svg(fraction: float, color: str, label: str, size: int = 168) 
         f'transform="rotate(-90 {cx} {cy})"/>'
         f'<text x="{cx}" y="{cy - 4}" text-anchor="middle" font-size="30" font-weight="800" '
         f'fill="{INK}" font-family="Inter, sans-serif">{fraction*100:.0f}%</text>'
-        f'<text x="{cx}" y="{cy + 20}" text-anchor="middle" font-size="11" font-weight="600" '
-        f'fill="{MUTED}" font-family="Inter, sans-serif">{label}</text>'
-        '</svg>'
+        + (
+            f'<text x="{cx}" y="{cy + 20}" text-anchor="middle" font-size="11" font-weight="600" '
+            f'fill="{MUTED}" font-family="Inter, sans-serif">{label}</text>'
+            if label else ""
+        )
+        + '</svg>'
     )
 
 
@@ -348,7 +351,7 @@ def render_sidebar():
     (vehicle, scenario_name, readings_full) for the current selection. Call this once at the
     top of every page -- it's cheap, and it's what keeps the selection in sync across pages."""
     with st.sidebar:
-        st.markdown("**Vehicle**")
+        st.markdown("**Vehicle Usage Profile**")
         vehicle = render_image_choice(
             options=list(VEHICLE_PROFILES.keys()),
             visuals=VEHICLE_PROFILES,
@@ -366,8 +369,8 @@ def render_sidebar():
         st.caption(SCENARIOS[scenario_name]["blurb"])
         st.markdown("---")
         with st.expander("About the models"):
-            st.write("**Baseline** — logistic regression, present readings only, F2 0.328.")
-            st.write("**Advanced** — tuned XGBoost, 24h history, F2 0.706.")
+            st.write("**Advanced Model I** — logistic regression, present readings only.")
+            st.write("**Advanced Model II** — tuned XGBoost, 24h history.")
 
     # If the scenario or vehicle changed since the last load, drop stale results rather than
     # showing a prediction that no longer matches what's selected in the sidebar.
@@ -390,5 +393,5 @@ def render_sidebar_minimal():
     No picker to keep in sync, so this skips it rather than showing an irrelevant filter."""
     with st.sidebar:
         with st.expander("About the models"):
-            st.write("**Baseline** — logistic regression, present readings only, F2 0.328.")
-            st.write("**Advanced** — tuned XGBoost, 24h history, F2 0.706.")
+            st.write("**Advanced Model I** — logistic regression, present readings only.")
+            st.write("**Advanced Model II** — tuned XGBoost, 24h history.")
