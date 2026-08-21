@@ -32,9 +32,9 @@ with col_baseline:
     st.markdown(
         """
         <div class="card">
-            <span class="badge badge-blue">ADVANCED MODEL I</span>
+            <span class="badge badge-blue">MODEL I</span>
             <h4>Present reading only</h4>
-            <p class="desc">Logistic regression, no history needed.</p>
+            <p class="desc">No history needed.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -50,7 +50,7 @@ with col_advanced:
         <div class="card">
             <span class="badge badge-purple">ADVANCED MODEL II</span>
             <h4>Last 24 hours</h4>
-            <p class="desc">Tuned XGBoost, 53 engineered features.</p>
+            <p class="desc">53 engineered features.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -84,7 +84,7 @@ if has_baseline or has_advanced:
     st.markdown('<div class="section-label" style="margin-top:1.6rem;">Results</div>', unsafe_allow_html=True)
 
 if has_baseline:
-    render_result_card("Advanced Model I - Result", st.session_state["baseline_result"])
+    render_result_card("Model I - Result", st.session_state["baseline_result"])
     st.write("")
 
 if has_advanced:
